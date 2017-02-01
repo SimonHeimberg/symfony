@@ -74,8 +74,8 @@ class DirectoryResource implements SelfCheckingResourceInterface, \Serializable
             return false;
         }
 
-        if (filemtime($this->resource) < $timestamp) {
-            return true;
+        if (filemtime($this->resource) > $timestamp) {
+            return false;
         }
         foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->resource), \RecursiveIteratorIterator::SELF_FIRST) as $file) {
             // if regex filtering is enabled only check matching files
@@ -89,12 +89,12 @@ class DirectoryResource implements SelfCheckingResourceInterface, \Serializable
                 continue;
             }
 
-            if ($file->getMTime() < $timestamp) {
-                return true
+            if ($file->getMTime() > $timestamp) {
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
     public function serialize()
