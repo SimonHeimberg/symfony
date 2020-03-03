@@ -20,6 +20,7 @@ class HeaderUtils
 {
     public const DISPOSITION_ATTACHMENT = 'attachment';
     public const DISPOSITION_INLINE = 'inline';
+    public const FILENAME_FALLBACK_AUTO = ' ';
 
     /**
      * This class should not be instantiated.
@@ -153,6 +154,7 @@ class HeaderUtils
      * @param string $filenameFallback A string containing only ASCII characters that
      *                                 is semantically equivalent to $filename. If the filename is already ASCII,
      *                                 it can be omitted, or just copied from $filename
+     *                                 If it is set to self::FILENAME_FALLBACK_AUTO, an automatically encoded filename is generated.
      *
      * @return string A string suitable for use as a Content-Disposition field-value
      *
@@ -168,6 +170,8 @@ class HeaderUtils
 
         if ('' === $filenameFallback) {
             $filenameFallback = $filename;
+        } elseif (self::FILENAME_FALLBACK_AUTO === $filenameFallback) {
+            $filenameFallback = self::generateFilenameFallback($filename);
         }
 
         // filenameFallback is not ASCII.
@@ -191,6 +195,36 @@ class HeaderUtils
         }
 
         return $disposition.'; '.self::toString($params, ';');
+    }
+
+    /**
+     * When the filename is not in ascii, it is automatically encoded.
+     *
+     * @param string $filename The original name of the file
+     *
+     * @return string filename in ascii
+     */
+    public static function generateFilenameFallback(string $filename): string
+    {
+        if ((!preg_match('/^[\x20-\x7e]*$/', $filename) || false !== strpos($filename, '%'))) {
+            // is not in ascii or contains %
+            $filenameFallback = '';
+            $encoding = mb_detect_encoding($filename, null, true) ?: '8bit';
+
+            for ($i = 0, $filenameLength = mb_strlen($filename, $encoding); $i < $filenameLength; ++$i) {
+                $char = mb_substr($filename, $i, 1, $encoding);
+
+                if ('%' === $char || \ord($char) < 32 || \ord($char) > 126) {
+                    $filenameFallback .= '_';
+                } else {
+                    $filenameFallback .= $char;
+                }
+            }
+        } else {
+            $filenameFallback = $filename;
+        }
+
+        return $filenameFallback;
     }
 
     private static function groupParts(array $matches, string $separators): array
